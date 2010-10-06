@@ -4,6 +4,7 @@ import struct
 import socket
 import platform
 import Messagetypes
+import thread
 
 logging.basicConfig(filename=__name__+".log",level=logging.DEBUG)
 
@@ -25,6 +26,8 @@ except:
   warning+="You must run the protobuf compiler \"protoc\" on the Mumble.proto file to generate the Mumble_pb2 file\n"
   warning+="Move the Mumble.proto file from the mumble source code into the same directory as this bot and type \"protoc --python_out=. Mumble.proto\"\n"
 
+headerFormat=">HI"
+
 class MumbleClient:
   def __init__(self, host, port, username, password):
     self.protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
@@ -42,6 +45,7 @@ class MumbleClient:
     self.currentChannel = -1
     self.channelList = []
     self.userList = []
+    self.sockLock=thread.allocate_lock()
 
   def isConnected(self):
     return self.socket != None and self.isConnected
@@ -57,4 +61,15 @@ class MumbleClient:
       logging.error("Could not join channel")
 
   def sendMessage(self, messageType, message):
-    pass
+    packet=struct.pack(headerFormat,messageType,message.ByteSize())+message.SerializeToString()
+    self.sockLock.acquire()
+    while len(packet)>0:
+      sent=self.socket.send(packet)
+      if sent < 0:
+        logging.error("Server socket error")
+        self.sockLock.release()
+        return
+      packet=packet[packet:]
+    self.sockLock.release()
+
+  def sendUdpTunnelMessge(
