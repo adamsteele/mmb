@@ -2,8 +2,9 @@ import logging
 import sys
 import struct
 import socket
+import select
 import platform
-import Messagetypes
+from MessageTypes import MessageType
 import thread
 from PingThread import PingThread
 
@@ -32,7 +33,6 @@ headerFormat=">HI"
 class MumbleClient:
   def __init__(self, host, port, username, password):
     self.protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
-    self.socket=socket
     self.host = host
     self.port = port
     self.username = username
@@ -70,11 +70,11 @@ class MumbleClient:
         logging.error("Server socket error")
         self.sockLock.release()
         return
-      packet=packet[packet:]
+      packet=packet[sent:]
     self.sockLock.release()
 
   def sendUdpTunnelMessage(self, data):
-    msgType = MessageTypes.UDPTunnel
+    msgType = MessageType.UDPTunnel
     message = UDPTunnel()
     message.packet = data
     self.sendMessage(msgType, message)
@@ -110,19 +110,25 @@ class MumbleClient:
     if self.password != None:
       a.password=self.password
     a.celt_versions.append(-2147483637)
-    self.sendMessage(MessageTypes.Version, v)
-    self.sendMessage(MessageTypes.Authenticate, a)
+    self.sendMessage(MessageType.Version, v)
+    self.sendMessage(MessageType.Authenticate, a)
     msg = ""
     while self.isConnected:
-      msg=self.readFully(6)
-      msgType,length=struct.unpack(headerFormat,msg)
-      msg=self.readFully(length)
-      self.processMessage(msgType,msg)
+      pollList,foo,errList=select.select([self.sockFD],[],[self.sockFD])
+      for item in pollList:
+        if item==self.sockFD:
+          msg=self.readFully(6)
+          if not msg:
+            self.isConnected = False
+            return
+          msgType,length=struct.unpack(headerFormat,msg)
+          msg=self.readFully(length)
+          self.processMessage(msgType,msg)
 
   def processMessage(self, msgType, message):
-    if msgType == MessageTypes.UDPTunnel or msgType == MessageType.Ping:
+    if msgType == MessageType.UDPTunnel or msgType == MessageType.Ping:
       return
-    if msgType == MessageTypes.ServerSync:
+    if msgType == MessageType.ServerSync:
       ss = ServerSync()
       ss.ParseFromString(message)
       self.session=ss.session
@@ -133,8 +139,8 @@ class MumbleClient:
       self.pingThread.start()
       us = UserState()
       us.session=self.session
-      self.sendMessage(MessageTypes.UserState, us)
-    elif msgType == MessageTypes.ChannelSync:
+      self.sendMessage(MessageType.UserState, us)
+    elif msgType == MessageType.ChannelState:
       cs = ChannelState()
       cs.ParseFromString(message)
       c = self.findChannel(cs.channel_id)
@@ -142,31 +148,48 @@ class MumbleClient:
         c['name'] = cs.name
         return
       self.channelList.append({'channel_id':cs.channel_id,'name':cs.name})
-    elif msgType == MessageTypes.ChannelRemove:
+    elif msgType == MessageType.ChannelRemove:
       cr = ChannelRemove()
       cr.ParseFromString(message)
       # to do
-    elif msgType == MessageTypes.UserState:
+    elif msgType == MessageType.UserState:
       us = UserState()
       us.ParseFromString(message)
       u = self.findUser(us.session)
       if u != None:
         if us.channel_id != None:
           u['channel_id'] = us.channel_id
-          if us.session == self.session
+          if us.session == self.session:
             self.currentChannel = u['channel_id']
         if us.session == self.session:
           if us.mute != None:
-            self.canSpeak = !us.mute
+            self.canSpeak = not us.mute
           if us.suppress != None:
-            self.canSpeak = !us.suppress
+            self.canSpeak = not us.suppress
         return
       self.userList.append({'session_id':us.session,'name':us.name,'channel_id':us.channel_id})
-    elif msgType == MessageTypes.UserRemove:
+    elif msgType == MessageType.UserRemove:
       pass
-    elif msgType == MessageTypes.TextMessage:
+    elif msgType == MessageType.TextMessage:
       pass
-    elif msgType == MessageTypes.CryptSetup:
+    elif msgType == MessageType.CryptSetup:
       pass
     else:
       logging.debug("unhandled message type: " + str(msgType))
+
+  def connect(self):
+    tcpSock=socket.socket(type=socket.SOCK_STREAM)
+    self.socket=ssl.wrap_socket(tcpSock,ssl_version=ssl.PROTOCOL_TLSv1)
+    self.socket.setsockopt(socket.SOL_TCP,socket.TCP_NODELAY,1)
+    try:
+      self.socket.connect((self.host,self.port))
+    except:
+      logging.error("could not connect")
+      return
+    self.isConnected = True
+    self.sockFD = self.socket.fileno()
+#    self.socket.setblocking(0)
+    self.handleProtocol()
+   
+  def disconnect(self):
+    self.isConnected = False

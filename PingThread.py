@@ -8,6 +8,7 @@ import MessageTypes
 
 class PingThread(threading.Thread):
   def __init__(self, mumbleClient):
+    threading.Thread.__init__(self)
     self.mc = mumbleClient
     self.running=True
 
@@ -19,4 +20,4 @@ class PingThread(threading.Thread):
         self.mc.sendMessage(MessageTypes.Ping, p)
         time.sleep(5000)
       except:
-        self.running=false
+        self.running=False

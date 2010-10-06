@@ -5,25 +5,22 @@ class MessageType:
   Ping=3
   Reject=4
   ServerSync=5
-  ChanelRemove = 6
-#// public static final int MESSAGETYPE_CHANNELSTATE = 7;
-#// public static final int MESSAGETYPE_USERREMOVE = 8;
-#// public static final int MESSAGETYPE_USERSTATE = 9;
-#// public static final int MESSAGETYPE_BANLIST = 10;
-#// public static final int MESSAGETYPE_TEXTMESSAGE = 11;
-#// public static final int MESSAGETYPE_PERMISSIONDENIED = 12;
-#// public static final int MESSAGETYPE_ACL = 13;
-#// public static final int MESSAGETYPE_QUERYUSERS = 14;
-#// public static final int MESSAGETYPE_CRYPTSETUP = 15;
-#// public static final int MESSAGETYPE_CONTEXTACTIONADD = 16;
-#// public static final int MESSAGETYPE_CONTEXTACTION = 17;
-#// public static final int MESSAGETYPE_USERLIST = 18;
-#// public static final int MESSAGETYPE_VOICETARGET = 19;
-#// public static final int MESSAGETYPE_PERMISSIONQUERY = 20;
-#// public static final int MESSAGETYPE_CODECVERSION = 21;
-#// public static final int MESSAGETYPE_USERSTATS = 22;
-#// public static final int MESSAGETYPE_REQUESTBLOB = 23;
-#// public static final int MESSAGETYPE_SERVERCONFIG = 24;
-
-
-  
+  ChannelRemove = 6
+  ChannelState = 7
+  UserRemove = 8
+  UserState = 9
+  BanList = 10
+  TextMessage = 11
+  PermissionDenied = 12
+  ACL = 13
+  QueryUsers = 14
+  CryptSetup = 15
+  ContextActionAdd = 16
+  ContextAction = 17
+  UserList = 18
+  VoiceTarget = 19
+  PermissionQuery = 20
+  CodecVersion = 21
+  UserStats = 22
+  RequestBlob = 23
+  ServerConfig = 24
