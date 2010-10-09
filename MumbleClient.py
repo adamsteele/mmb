@@ -3,12 +3,16 @@ import sys
 import struct
 import socket
 import select
+import os
 import platform
 from MessageTypes import MessageType
 import thread
 from PingThread import PingThread
+from ctypes import *
 
 logging.basicConfig(filename=__name__+".log",level=logging.DEBUG)
+
+CryptState=CDLL(os.curdir + '/libcryptstate.so')
 
 try:
   import ssl
@@ -17,7 +21,7 @@ except:
   exit
 
 try:
-  from Mumble_pb2 import Authenticate, ChannelRemove, ChannelState, ServerSync, TextMessage, UserRemove, UserState, Version, UDPTunnel
+  from Mumble_pb2 import Authenticate, ChannelRemove, ChannelState, ServerSync, TextMessage, UserRemove, UserState, Version, UDPTunnel, CryptSetup
 except:
   warning+="WARNING: This python program requires the python ssl module (available in python 2.6; standalone version may be at found http://pypi.python.org/pypi/ssl/)\n"
 try:
@@ -77,6 +81,7 @@ class MumbleClient:
     msgType = MessageType.UDPTunnel
     message = UDPTunnel()
     message.packet = data
+#    buf = pointer(c_char)
     self.sendMessage(msgType, message)
 
   def findChannel(self, channel_id):
@@ -128,7 +133,11 @@ class MumbleClient:
   def processMessage(self, msgType, message):
     if msgType == MessageType.UDPTunnel or msgType == MessageType.Ping:
       return
-    if msgType == MessageType.ServerSync:
+    if msgType == MessageType.CodecVersion:
+      cv = CodecVersion()
+      cv.ParseFromString(message)
+      
+    elif msgType == MessageType.ServerSync:
       ss = ServerSync()
       ss.ParseFromString(message)
       self.session=ss.session
@@ -173,7 +182,13 @@ class MumbleClient:
     elif msgType == MessageType.TextMessage:
       pass
     elif msgType == MessageType.CryptSetup:
-      pass
+      # TODO
+      cs = CryptSetup()
+      cs.ParseFromString(message)
+      self.key = cs.key
+      self.encrypt_iv = cs.server_nonce
+      self.decrypt_iv = cs.client_nonce 
+      CryptState.setKey(byref(self.key), byref(self.decrypt_iv), byref(self.encrypt_iv))
     else:
       logging.debug("unhandled message type: " + str(msgType))
 
