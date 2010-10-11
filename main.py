@@ -1,18 +1,43 @@
-from MumbleConnection import MumbleConnection
+from MumbleClient import MumbleClient
+from MumbleConnectionHost import MumbleConnectionHost
+from ConnectionStates import ConnectionState
+import wave
 import time
 
-#LOG_FILENAME = 'example.log'
-#logging.basicConfig(filename=LOG_FILENAME,level=logging.DEBUG)
+
+class MCH(MumbleConnectionHost):
+  def __init__(self):
+    self.connectionState = ConnectionState.Disconnected
+  
+  def setConnectionState(self, state):
+    self.connectionState = state
+    
+  def getConnectionState(self):
+    return self.connectionState
+
+  def isConnected(self):
+    return self.connectionState == ConnectionState.Connected
 
 def main():
-  nextPing=time.time()-1
-  con=MumbleConnection('localhost', 64738)
-  con.connect('TestBot', None, 'Channel2')
+  mch=MCH()
+  mc=MumbleClient(mch,'localhost', 64738, 'TestBot', None)
+  mc.connect()
+  while not mch.isConnected():
+    time.sleep(10)
+#  w=wave.open('original.wav', 'rb')
+#  (nc,sw,fr,nf,comptype, compname) = w.getparams()
+#  data = w.readframes(nf)
+#  w.close()
+#  mc.sendUdpTunnelMessage(data)
   while True:
-    t=time.time()
-    if t>nextPing:
-      con.ping()
-    time.sleep(1)
+    time.sleep(10)
+#  sent = 0
+#  while len(data) > 0:
+#    sndData = data[:1024]
+#    mc.sendUdpTunnelMessage(sndData)
+#    sent+=1024
+#    data=data[sent:]
+
 
 if __name__ == '__main__':
   main()
