@@ -1,4 +1,4 @@
-from MumbleClient import MumbleClient
+from MumbleClient import MumbleClient, State
 from MumbleConnectionHost import MumbleConnectionHost
 from ConnectionStates import ConnectionState
 import wave
@@ -22,13 +22,16 @@ def main():
   mch=MCH()
   mc=MumbleClient(mch,'localhost', 64738, 'TestBot', None)
   mc.connect()
-  while not mch.isConnected():
-    time.sleep(10)
+  while mc.state != State.Authenticated:
+    print "Sleeping"
+    time.sleep(1)
 #  w=wave.open('original.wav', 'rb')
 #  (nc,sw,fr,nf,comptype, compname) = w.getparams()
 #  data = w.readframes(nf)
 #  w.close()
 #  mc.sendUdpTunnelMessage(data)
+  print "Setting comment..."
+  mc.setComment("I am a bot!")
   while True:
     time.sleep(10)
 #  sent = 0

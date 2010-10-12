@@ -35,6 +35,11 @@ except:
 
 headerFormat=">HI"
 
+class State:
+  New = 0
+  Connected = 1
+  Authenticated = 2
+
 class MumbleClient:
   def __init__(self, mcHost, host, port, username, password):
     self.protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
@@ -58,6 +63,7 @@ class MumbleClient:
     self.stateLock = thread.allocate_lock()
     self.mcHost = mcHost
     self.mcHost.setConnectionState(ConnectionState.Connecting)
+    self.state = State.New
 
   def isConnected(self):
     return self.socket != None and self.isConnected
@@ -179,8 +185,10 @@ class MumbleClient:
       self.pingThread.start()
       us = UserState()
       us.session=self.session
+      self.state = State.Authenticated
       self.mcHost.currentChannelChanged()
       self.mcHost.currentUserUpdated()
+      self.mcHost.setConnectionState(ConnectionState.Connected)
     elif msgType == MessageType.ChannelState:
       logging.debug("Got UserState")
       cs = ChannelState()
@@ -263,3 +271,14 @@ class MumbleClient:
    
   def disconnect(self):
     self.isConnected = False
+
+  def setComment(self, comment):
+    logging.debug("Setting comment to: " + comment)
+    
+    if self.state != State.Authenticated:
+      logging.debug("Not in Authenticated state. Aborting.")
+      return
+    us = UserState()
+    us.session = self.session
+    us.comment = comment
+    self.sendMessage(MessageType.UserState, us)
