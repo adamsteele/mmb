@@ -24,3 +24,5 @@ class MessageType:
   UserStats = 22
   RequestBlob = 23
   ServerConfig = 24
+
+  StringLookupTable = { Version : "Version", UDPTunnel : "UDPTunnel", Authenticate : "Authenticate", Ping : "Ping", Reject : "Reject", ServerSync : "ServerSync", ChannelRemove : "ChannelRemove", ChannelState : "ChannelState", UserRemove : "UserRemove", UserState : "UserState", BanList : "BanList", TextMessage : "TextMessage", PermissionDenied : "PermissionDenied", ACL : "ACL", QueryUsers : "QueryUsers", CryptSetup : "CryptSetup", ContextActionAdd : "ContextActionAdd", ContextAction : "ContextAction", UserList : "UserList", VoiceTarget : "VoiceTarget", PermissionQuery : "PermissionQuery", CodecVersion : "CodecVersion", UserStats : "UserStates", RequestBlob : "RequestBlob", ServerConfig : "ServerConfig" }

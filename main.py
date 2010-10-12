@@ -1,9 +1,12 @@
-from MumbleClient import MumbleClient, State
 from MumbleConnectionHost import MumbleConnectionHost
 from ConnectionStates import ConnectionState
+import MumbleConnection
 import wave
 import time
+import logging
+import logging.handlers
 
+LOG_FILENAME = "main.log"
 
 class MCH(MumbleConnectionHost):
   def __init__(self):
@@ -19,19 +22,26 @@ class MCH(MumbleConnectionHost):
     return self.connectionState == ConnectionState.Connected
 
 def main():
+  # Add the log message handler to the logger
+  handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=10*1024*1024, backupCount=5)
+  formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+  handler.setFormatter(formatter)
+  MumbleConnection.log.addHandler(handler)
+  MumbleConnection.log.setLevel(logging.DEBUG)
+
   mch=MCH()
-  mc=MumbleClient(mch,'localhost', 64738, 'TestBot', None)
+  mc=MumbleConnection.MumbleConnection(mch,'localhost', 64738, 'TestBot', None)
   mc.connect()
-  while mc.state != State.Authenticated:
-    print "Sleeping"
-    time.sleep(1)
+#  while mc.state != State.Authenticated:
+ #   print "Sleeping"
+  #  time.sleep(1)
 #  w=wave.open('original.wav', 'rb')
 #  (nc,sw,fr,nf,comptype, compname) = w.getparams()
 #  data = w.readframes(nf)
 #  w.close()
 #  mc.sendUdpTunnelMessage(data)
-  print "Setting comment..."
-  mc.setComment("I am a bot!")
+#  print "Setting comment..."
+#  mc.setComment("I am a bot!")
   while True:
     time.sleep(10)
 #  sent = 0

@@ -7,18 +7,20 @@ from Mumble_pb2 import Ping
 from MessageTypes import MessageType
 import logging
 
+log = logging.getLogger("PingThread")
+
 class PingThread(threading.Thread):
   def __init__(self, mumbleClient):
     threading.Thread.__init__(self)
     self.pingTotal = 1
     self.mc = mumbleClient
     self.running=True
-    logging.debug("PingThread initialized")
+    log.debug("PingThread initialized")
 
   def run(self):
     while self.running:
       try:
-        logging.debug("Pinging...")
+        log.debug("Pinging...")
         p = Ping()
         p.timestamp=(self.pingTotal*5000000)
         p.good=0
@@ -35,8 +37,8 @@ class PingThread(threading.Thread):
         self.mc.sendMessage(MessageType.Ping, p)
         time.sleep(5)
       except Exception as inst:
-        logging.error("Got error in PingThread")
-        logging.error(type(inst))
-        logging.error(inst.args)
-        logging.error(inst)
+        log.error("Got error: ")
+        log.error(type(inst))
+        log.error(inst.args)
+        log.error(inst)
         self.running=False

@@ -5,15 +5,16 @@ import socket
 import select
 import os
 import platform
-from MessageTypes import MessageType
 import thread
+
+
+from MessageTypes import MessageType
 from PingThread import PingThread
 from CryptState import CryptState
 from ConnectionStates import ConnectionState
-from MumbleConnectionHost import MumbleConnectionHost
 
-logging.basicConfig(filename=__name__+".log",level=logging.DEBUG)
 
+log = logging.getLogger("MumbleConnection")
 
 try:
   import ssl
@@ -25,25 +26,13 @@ try:
   from Mumble_pb2 import Authenticate, ChannelRemove, ChannelState, ServerSync, TextMessage, UserRemove, UserState, Version, UDPTunnel, CryptSetup, CodecVersion, ServerConfig
 except:
   warning+="WARNING: This python program requires the python ssl module (available in python 2.6; standalone version may be at found http://pypi.python.org/pypi/ssl/)\n"
-try:
-    import Mumble_pb2
-except:
-  warning+="WARNING: Module Mumble_pb2 not found\n"
-  warning+="This program requires the Google Protobuffers library (http://code.google.com/apis/protocolbuffers/) to be installed\n"
-  warning+="You must run the protobuf compiler \"protoc\" on the Mumble.proto file to generate the Mumble_pb2 file\n"
-  warning+="Move the Mumble.proto file from the mumble source code into the same directory as this bot and type \"protoc --python_out=. Mumble.proto\"\n"
 
 headerFormat=">HI"
+protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
 
-class State:
-  New = 0
-  Connected = 1
-  Authenticated = 2
-
-class MumbleClient:
-  def __init__(self, mcHost, host, port, username, password):
-    self.protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
-    logging.debug("Starting MumbleClient. Protocol Version: " + str(self.protocolVersion))
+class MumbleConnection:
+  def __init__(self, connectionHost, host, port, username, password):
+    log.debug("Starting MumbleClient. Protocol Version: " + str(protocolVersion))
     self.host = host
     self.port = port
     self.username = username
@@ -61,15 +50,14 @@ class MumbleClient:
     self.CryptState = CryptState()
     self.send_queue = []
     self.stateLock = thread.allocate_lock()
-    self.mcHost = mcHost
-    self.mcHost.setConnectionState(ConnectionState.Connecting)
-    self.state = State.New
+    self.connectionHost = connectionHost
+    self.disconnecting = False
 
   def isConnected(self):
     return self.socket != None and self.isConnected
 
   def joinChannel(self, channelId):
-    logging.debug("Joining channel " + str(channelId))
+    log.debug("Joining channel " + str(channelId))
     us = UserState()
     us.session=self.session
     us.channel_id=channelId
@@ -77,16 +65,16 @@ class MumbleClient:
       self.sendMessage(MessageType.UserState, us)
       self.currentChannel=channelId
     except:
-      logging.error("Could not join channel")
+      log.error("Could not join channel")
 
   def sendMessage(self, messageType, message):
-    logging.debug("Sending Message. Type: " + str(messageType))
+    log.debug("Sending Message. Type: " + MessageType.StringLookupTable[messageType])
     packet=struct.pack(headerFormat,messageType,message.ByteSize())+message.SerializeToString()
     self.sockLock.acquire()
     while len(packet)>0:
       sent=self.socket.send(packet)
       if sent < 0:
-        logging.error("Server socket error")
+        log.error("Server socket error")
         self.sockLock.release()
         return
       packet=packet[sent:]
@@ -95,7 +83,6 @@ class MumbleClient:
   def sendUdpTunnelMessage(self, data):
     msgType = MessageType.UDPTunnel
     message = UDPTunnel()
-    data = self.CryptState.encrypt(data, len(data))
     message.packet = data
     self.sendMessage(msgType, message)
 
@@ -105,25 +92,25 @@ class MumbleClient:
         return c
     return None
 
-  def findUser(self, session_id):
+  def __findUser(self, session_id):
     for u in self.userList:
       if u['session_id'] == session_id:
         return u
     return None
 
-  def readFully(self,size):
+  def __readFully(self,size):
     msg=""
     while len(msg) < size:
       try:
         rcvd=self.socket.recv(size-len(msg))
       except Exception as inst:
-        logging.error("Recv error: ")
-        logging.error(inst)  
+        log.error("Recv error: ")
+        log.error(inst)  
         return None
-        #logging.error("Error: " + type(inst) + " " + inst)
+        #log.error("Error: " + type(inst) + " " + inst)
       msg += rcvd
       if len(rcvd)==0:
-         logging.debug("Got 0 bytes from socket. Strange.")
+         log.warning("Got 0 bytes from socket. Strange.")
          return None
     return msg
 
@@ -131,66 +118,68 @@ class MumbleClient:
     msg = ""
     try:
       while self.isConnected:
-        header=self.readFully(6)
+        header=self.__readFully(6)
         if not header:
-          logging.debug("Didn't get header")
+          log.debug("Didn't get header")
         msgType,length=struct.unpack(headerFormat, header)
-        msg=self.readFully(length)
+        msg=self.__readFully(length)
         self.stateLock.acquire()
         try:
-          self.processMessage(msgType, msg)
+          self.__processMessage(msgType, msg)
         finally:
           self.stateLock.release()
     except Exception as e:
-      logging.error("Got exception: ")
-      logging.error(type(e))
-      logging.error(e.args)
-      logging.error(e)
+      log.error("Got exception: ")
+      log.error(type(e))
+      log.error(e.args)
+      log.error(e)
 
-  def handleProtocol(self):
+  def __handleProtocol(self):
     self.stateLock.acquire()
     v = Version()
-    v.version=self.protocolVersion
+    v.version=protocolVersion
     v.release="mmb 0.0.1-dev"
     a = Authenticate()
     a.username=self.username
     if self.password != None:
       a.password=self.password
     a.celt_versions.append(-2147483637)
-    logging.debug("Sending Version message")
+    log.debug("Sending Version message")
     self.sendMessage(MessageType.Version, v)
-    logging.debug("Sending Authenticate message")
+    log.debug("Sending Authenticate message")
     self.sendMessage(MessageType.Authenticate, a)
     self.stateLock.release()
     thread.start_new_thread(self.__readThread, ())
 
-  def processMessage(self, msgType, message):
-    logging.debug("Processing Message...")
+  def __processMessage(self, msgType, message):
+    '''A message was received from the server, so process it.
+       The msgType is the type of message that was received.
+       The message is a ProtoBuf message that was received.
+    '''
+
+    log.debug("Processing Message...")
+    log.debug(MessageType.StringLookupTable[msgType])
     if msgType == MessageType.UDPTunnel or msgType == MessageType.Ping:
-      logging.debug("Got Ping or UDPTunnel. Ignoring")
+      log.debug("Got Ping or UDPTunnel. Ignoring")
       return
     if msgType == MessageType.CodecVersion:
-      logging.debug("Got CodecVersion")
+      log.debug("Got CodecVersion")
       cv = CodecVersion()
       cv.ParseFromString(message)   
     elif msgType == MessageType.ServerSync:
-      logging.debug("Got ServerSync")
+      log.debug("Got ServerSync")
       ss = ServerSync()
       ss.ParseFromString(message)
       self.session=ss.session
       self.authenticated = True
-      u = self.findUser(self.session)
+      u = self.__findUser(self.session)
       self.currentChannel = u['channel_id']
       self.pingThread = PingThread(self)
       self.pingThread.start()
       us = UserState()
       us.session=self.session
-      self.state = State.Authenticated
-      self.mcHost.currentChannelChanged()
-      self.mcHost.currentUserUpdated()
-      self.mcHost.setConnectionState(ConnectionState.Connected)
     elif msgType == MessageType.ChannelState:
-      logging.debug("Got UserState")
+      log.debug("Got UserState")
       cs = ChannelState()
       cs.ParseFromString(message)
       c = self.findChannel(cs.channel_id)
@@ -199,15 +188,15 @@ class MumbleClient:
         return
       self.channelList.append({'channel_id':cs.channel_id,'name':cs.name})
     elif msgType == MessageType.ChannelRemove:
-      logging.debug("Got ChannelRemove")
+      log.debug("Got ChannelRemove")
       cr = ChannelRemove()
       cr.ParseFromString(message)
       # to do
     elif msgType == MessageType.UserState:
-      logging.debug("Got UserState")
+      log.debug("Got UserState")
       us = UserState()
       us.ParseFromString(message)
-      u = self.findUser(us.session)
+      u = self.__findUser(us.session)
       if u != None:
         if us.channel_id != None:
           u['channel_id'] = us.channel_id
@@ -225,59 +214,59 @@ class MumbleClient:
     elif msgType == MessageType.TextMessage:
       pass
     elif msgType == MessageType.Version:
-      pass
+      log.debug("Got " + MessageType.StringLookupTable[MessageType.Version])
     elif msgType == MessageType.ServerConfig:
-      logging.debug("Got ServerConfig")
+      log.debug("Got ServerConfig")
       sc = ServerConfig()
       sc.ParseFromString(message)
       msgLength = sc.message_length
       if msgLength > 0:
-        welcome_msg = self.readFully(msgLength)
-        logging.debug(welcome_msg)
+        welcome_msg = self.__readFully(msgLength)
+        log.debug(welcome_msg)
       imageMsgLength = sc.image_message_length
       if imageMsgLength > 0:
-        welcome_image = self.readFully(imageMsgLength)
+        welcome_image = self.__readFully(imageMsgLength)
     elif msgType == MessageType.CryptSetup:
-      logging.debug("Got CryptSetup")
+      log.debug("Got CryptSetup")
       cs = CryptSetup()
       cs.ParseFromString(message)
       self.key = cs.key
       self.encrypt_iv = cs.server_nonce
       self.decrypt_iv = cs.client_nonce 
-      logging.debug("Got Key: " + self.key)
-      logging.debug("Server Nonce: " + self.encrypt_iv)
-      logging.debug("Client Nonce: " + self.decrypt_iv)
       if self.key != None and self.encrypt_iv != None and self.decrypt_iv != None:
         self.CryptState.setKey(self.key, self.encrypt_iv, self.decrypt_iv)
     else:
-      logging.debug("unhandled message type: " + str(msgType))
+      log.debug("unhandled message type: " + str(msgType))
 
   def connect(self):
-    logging.debug("---In connect---")
+    log.debug("---In connect---")
     tcpSock=socket.socket(type=socket.SOCK_STREAM)
     self.socket=ssl.wrap_socket(tcpSock,ssl_version=ssl.PROTOCOL_TLSv1)
     self.socket.setsockopt(socket.SOL_TCP,socket.TCP_NODELAY,1)
     try:
       self.socket.connect((self.host,self.port))
     except:
-      logging.error("could not connect")
+      log.error("could not connect")
       return
-    self.mcHost.setConnectionState(ConnectionState.Connected)
     self.isConnected = True
     self.sockFD = self.socket.fileno()
-#    self.socket.setblocking(0)
-    self.handleProtocol()
-    logging.debug("--exit connect---")
+    self.__handleProtocol()
+    log.debug("--exit connect---")
    
   def disconnect(self):
-    self.isConnected = False
+    self.disconnecting = True
+    self.stateLock.acquire()
+    try:
+   #   if self.readingThread != None:
+      self.isConnected = False
+    #    self.readingThread.join()
+     #   self.readingThread = None
+    except Exception as e:
+      log.error(e)
+    self.stateLock.release()
 
   def setComment(self, comment):
-    logging.debug("Setting comment to: " + comment)
-    
-    if self.state != State.Authenticated:
-      logging.debug("Not in Authenticated state. Aborting.")
-      return
+    log.debug("Setting comment to: " + comment)
     us = UserState()
     us.session = self.session
     us.comment = comment
