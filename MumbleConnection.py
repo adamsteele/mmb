@@ -11,27 +11,33 @@ import thread
 from MessageTypes import MessageType
 from PingThread import PingThread
 from CryptState import CryptState
-from ConnectionStates import ConnectionState
+from IMumbleConnectionObserver import ConnectionState
 
 
 log = logging.getLogger("MumbleConnection")
-
 try:
   import ssl
 except:
-  print "Requires ssl module"
+  print "WARNING: This python program requires the python ssl module (available in python 2.6; standalone version may be at found http://pypi.python.org/pypi/ssl/)\n"
   exit
 
 try:
   from Mumble_pb2 import Authenticate, ChannelRemove, ChannelState, ServerSync, TextMessage, UserRemove, UserState, Version, UDPTunnel, CryptSetup, CodecVersion, ServerConfig
 except:
-  warning+="WARNING: This python program requires the python ssl module (available in python 2.6; standalone version may be at found http://pypi.python.org/pypi/ssl/)\n"
+  print "WARNING: Module Mumble_pb2 not found\n"
+  exit
+
 
 headerFormat=">HI"
 protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
 
 class MumbleConnection:
-  def __init__(self, connectionHost, host, port, username, password):
+  '''
+     This class is responsible for implementing the underlying protocol
+     of Mumble. It communicates with the server using protobuf messages.
+  '''
+
+  def __init__(self, connectionObserver, host, port, username, password):
     log.debug("Starting MumbleClient. Protocol Version: " + str(protocolVersion))
     self.host = host
     self.port = port
@@ -50,8 +56,9 @@ class MumbleConnection:
     self.CryptState = CryptState()
     self.send_queue = []
     self.stateLock = thread.allocate_lock()
-    self.connectionHost = connectionHost
+    self.connectionObserver = connectionObserver
     self.disconnecting = False
+    self.connectionObserver.setConnectionState(ConnectionState.Disconnected)
 
   def isConnected(self):
     return self.socket != None and self.isConnected
@@ -115,6 +122,7 @@ class MumbleConnection:
     return msg
 
   def __readThread(self):
+    log.debug("Read thread started")
     msg = ""
     try:
       while self.isConnected:
@@ -163,11 +171,9 @@ class MumbleConnection:
       log.debug("Got Ping or UDPTunnel. Ignoring")
       return
     if msgType == MessageType.CodecVersion:
-      log.debug("Got CodecVersion")
       cv = CodecVersion()
       cv.ParseFromString(message)   
     elif msgType == MessageType.ServerSync:
-      log.debug("Got ServerSync")
       ss = ServerSync()
       ss.ParseFromString(message)
       self.session=ss.session
@@ -179,7 +185,6 @@ class MumbleConnection:
       us = UserState()
       us.session=self.session
     elif msgType == MessageType.ChannelState:
-      log.debug("Got UserState")
       cs = ChannelState()
       cs.ParseFromString(message)
       c = self.findChannel(cs.channel_id)
@@ -188,12 +193,10 @@ class MumbleConnection:
         return
       self.channelList.append({'channel_id':cs.channel_id,'name':cs.name})
     elif msgType == MessageType.ChannelRemove:
-      log.debug("Got ChannelRemove")
       cr = ChannelRemove()
       cr.ParseFromString(message)
       # to do
     elif msgType == MessageType.UserState:
-      log.debug("Got UserState")
       us = UserState()
       us.ParseFromString(message)
       u = self.__findUser(us.session)
@@ -214,9 +217,8 @@ class MumbleConnection:
     elif msgType == MessageType.TextMessage:
       pass
     elif msgType == MessageType.Version:
-      log.debug("Got " + MessageType.StringLookupTable[MessageType.Version])
+      pass
     elif msgType == MessageType.ServerConfig:
-      log.debug("Got ServerConfig")
       sc = ServerConfig()
       sc.ParseFromString(message)
       msgLength = sc.message_length
@@ -227,7 +229,6 @@ class MumbleConnection:
       if imageMsgLength > 0:
         welcome_image = self.__readFully(imageMsgLength)
     elif msgType == MessageType.CryptSetup:
-      log.debug("Got CryptSetup")
       cs = CryptSetup()
       cs.ParseFromString(message)
       self.key = cs.key
@@ -239,19 +240,20 @@ class MumbleConnection:
       log.debug("unhandled message type: " + str(msgType))
 
   def connect(self):
-    log.debug("---In connect---")
+    log.debug("Attempting to connect...")
     tcpSock=socket.socket(type=socket.SOCK_STREAM)
     self.socket=ssl.wrap_socket(tcpSock,ssl_version=ssl.PROTOCOL_TLSv1)
     self.socket.setsockopt(socket.SOL_TCP,socket.TCP_NODELAY,1)
     try:
       self.socket.connect((self.host,self.port))
-    except:
-      log.error("could not connect")
+    except Exception as e:
+      log.error(e)
       return
+    log.debug("Connected.")
     self.isConnected = True
+    self.connectionObserver.setConnectionState(ConnectionState.Connected)
     self.sockFD = self.socket.fileno()
     self.__handleProtocol()
-    log.debug("--exit connect---")
    
   def disconnect(self):
     self.disconnecting = True

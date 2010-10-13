@@ -1,25 +1,13 @@
-from MumbleConnectionHost import MumbleConnectionHost
-from ConnectionStates import ConnectionState
 import MumbleConnection
 import wave
 import time
 import logging
 import logging.handlers
+import MumbleService
+import PingThread
 
 LOG_FILENAME = "main.log"
 
-class MCH(MumbleConnectionHost):
-  def __init__(self):
-    self.connectionState = ConnectionState.Disconnected
-  
-  def setConnectionState(self, state):
-    self.connectionState = state
-    
-  def getConnectionState(self):
-    return self.connectionState
-
-  def isConnected(self):
-    return self.connectionState == ConnectionState.Connected
 
 def main():
   # Add the log message handler to the logger
@@ -28,10 +16,15 @@ def main():
   handler.setFormatter(formatter)
   MumbleConnection.log.addHandler(handler)
   MumbleConnection.log.setLevel(logging.DEBUG)
+  MumbleService.log.addHandler(handler)
+  MumbleService.log.setLevel(logging.DEBUG)
+  PingThread.log.addHandler(handler)
+  PingThread.log.setLevel(logging.DEBUG)
 
-  mch=MCH()
-  mc=MumbleConnection.MumbleConnection(mch,'localhost', 64738, 'TestBot', None)
-  mc.connect()
+  observer=MumbleService.MumbleService('localhost', 64738, 'TestBot', None)
+  observer.connect()
+  #mc=MumbleConnection.MumbleConnection(mch,'localhost', 64738, 'TestBot', None)
+  #mc.connect()
 #  while mc.state != State.Authenticated:
  #   print "Sleeping"
   #  time.sleep(1)

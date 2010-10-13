@@ -3,9 +3,14 @@ import threading
 import signal
 import time
 from datetime import datetime
-from Mumble_pb2 import Ping
 from MessageTypes import MessageType
 import logging
+
+try:
+  from Mumble_pb2 import Ping
+except:
+  print "Could not load Mumble_pb2"
+  exit
 
 log = logging.getLogger("PingThread")
 
@@ -35,7 +40,7 @@ class PingThread(threading.Thread):
         p.tcp_ping_var=50
         self.pingTotal+=1
         self.mc.sendMessage(MessageType.Ping, p)
-        time.sleep(5)
+        time.sleep(30)
       except Exception as inst:
         log.error("Got error: ")
         log.error(type(inst))
