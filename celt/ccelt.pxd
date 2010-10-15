@@ -15,5 +15,5 @@ cdef extern from "celt/celt.h":
   void celt_mode_destroy(CELTMode *mode)
   CELTEncoder *celt_encoder_create(const_celtmode_ptr mode, int channels, int *error)
   int celt_encoder_ctl(CELTEncoder * st, int request, int* value)
-  void celt_mode_destroy(CELTMode *mode)
+  void celt_encoder_destroy(CELTEncoder *encoder)
   int celt_encode(CELTEncoder *st, const_celt_int16_ptr *pcm, int frame_size, unsigned char *compressed, int nbCompressedBytes)

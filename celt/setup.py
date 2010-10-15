@@ -4,7 +4,7 @@ from Cython.Distutils import build_ext
 
 ext_modules = [
   Extension("celt",
-            sources = ["celtmode.pyx"],
+            sources = ["celt.pyx"],
             include_dirs = ["/usr/include/celt"],
             library_dirs = ["/usr/lib"],
             libraries = ["celt0"])
