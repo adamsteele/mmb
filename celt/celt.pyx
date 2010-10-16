@@ -47,12 +47,6 @@ cdef class CeltEncoder:
   def __cinit__(self,sampleRate,frameSize, channels):
     self._celtmode = ccelt.celt_mode_create(sampleRate, frameSize, NULL)
     self._celtencoder = ccelt.celt_encoder_create(self._celtmode, channels, NULL)
-#    pass
-
-#  cdef void init_encoder(self, ccelt.const_celtmode_ptr mode, int channels):
- #   self._celtencoder = ccelt.celt_encoder_create(mode, channels, NULL)
-#  cdef init_encoder(self, ccelt.CELTMode* mode, int channels):
- #   self._celtencoder = ccelt.celt_encoder_create(mode, channels, NULL)
   
   def __dealloc__(self):
     if self._celtencoder is not NULL:
@@ -62,4 +56,23 @@ cdef class CeltEncoder:
     
   
   def setPredictionRequest(self, value):
-    ccelt.celt_encoder_ctl(self._celtencoder, celtConstants.CELT_SET_PREDICTION_REQUEST, <int*>(<char*>value))  
+    cdef int v = <int>value
+    ccelt.celt_encoder_ctl(self._celtencoder, celtConstants.CELT_SET_PREDICTION_REQUEST,&v) 
+
+  def setVBRRate(self, value):
+    cdef int v = <int>value
+    ccelt.celt_encoder_ctl(self._celtencoder, celtConstants.CELT_SET_VBR_RATE_REQUEST, &v)
+
+ # cdef char* _encode(self, unsigned char* buffer, int compressedSize):
+ #   cdef unsigned char out[512]
+ #   cdef int len = ccelt.celt_encode(self._celtencoder, <short *>buffer, NULL, out, compressedSize)
+ #   return <char*>out
+    
+
+  def encode(self, data, compressedSize):
+    #compressed = create_string_buffer(compressedSize)
+    cdef unsigned char out[512]
+    cdef unsigned char* buffer = <unsigned char *>data
+    ccelt.celt_encode(self._celtencoder, <short *>buffer, NULL, out, <int>compressedSize) 
+    outBytes = <unsigned char *>out
+    return outBytes
