@@ -1,10 +1,12 @@
 import MumbleConnection
-import wave
 import time
 import logging
 import logging.handlers
 import MumbleService
 import PingThread
+from PacketDataStream import *
+from collections import deque
+
 
 LOG_FILENAME = "main.log"
 
@@ -20,22 +22,42 @@ def main():
   MumbleService.log.setLevel(logging.DEBUG)
   PingThread.log.addHandler(handler)
   PingThread.log.setLevel(logging.DEBUG)
-
+  AUDIO_QUALITY = 60000
+  compressedSize=min(AUDIO_QUALITY / (100 * 8), 127)
+  f=open("origina.wav.spx", "rb")
   observer=MumbleService.MumbleService('localhost', 64738, 'TestBot', None)
   observer.connect()
-  #mc=MumbleConnection.MumbleConnection(mch,'localhost', 64738, 'TestBot', None)
-  #mc.connect()
-#  while mc.state != State.Authenticated:
- #   print "Sleeping"
-  #  time.sleep(1)
-#  w=wave.open('original.wav', 'rb')
-#  (nc,sw,fr,nf,comptype, compname) = w.getparams()
-#  data = w.readframes(nf)
-#  w.close()
-#  mc.sendUdpTunnelMessage(data)
-#  print "Setting comment..."
-#  mc.setComment("I am a bot!")
+  data = f.read()  
+  f.close()
+  outputQueue = deque()
+  i = 0
+  while len(data) > i:
+    outputQueue.append(data[i:i+compressedSize])
+    i += compressedSize+1
+  
+  seq = 0
+  framesPerPacket = 6
+  outputBuffer = 1024 * [0]
+  pds = PacketDataStream(outputBuffer)
+  offset=0
   while True:
+    while len(outputQueue) > 0:
+      flags = 0
+      flags = flags | observer.getCodec() << 5
+      outputBuffer[0] = flags
+      pds.rewind()
+      pds.next()
+      seq += framesPerPacket
+      pds.writeLong(seq)
+      for i in range(framesPerPacket):
+        tmp = outputQueue.popleft()
+        head = len(tmp)
+        if i < framesPerPacket - 1:
+          head = head | 0x80
+        pds.append(head)
+        pds.append(tmp)
+      # convert outputBuffer to str here its currently a list
+      observer.sendUdpMessage(outputBuffer)
     time.sleep(10)
 #  sent = 0
 #  while len(data) > 0:

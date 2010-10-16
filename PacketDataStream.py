@@ -22,7 +22,7 @@ class PacketDataStream:
 
   def append(self, v):
     if self.offset < len(self.data):
-      self.data[offset] = v
+      self.data[self.offset] = v
       self.offset += 1
     else:
       self.ok = False
@@ -105,7 +105,7 @@ class PacketDataStream:
         self.ok = False
         i = 0
     elif v & 0xF0 == 0xE0:
-      i = (v & 0x0F) << 24 | self.next() 16 | self.next() << 8 | self.next()
+      i = (v & 0x0F) << 24 | self.next() << 16 | self.next() << 8 | self.next()
     elif v &0xE0 == 0xC0:
       i = (v & 0x1F) << 16 | self.next() << 8 | self.next()
 

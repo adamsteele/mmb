@@ -14,3 +14,9 @@ class MumbleService(IMumbleConnectionObserver):
 
   def connect(self):
     self.mc.connect()
+
+  def getCodec(self):
+    return self.mc.codec
+
+  def sendUdpMessage(self, buffer):
+    self.mc.sendUdpTunnelMessage(buffer)

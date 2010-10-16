@@ -27,9 +27,16 @@ except:
   print "WARNING: Module Mumble_pb2 not found\n"
   exit
 
-
+UDPMESSAGETYPE_UDPVOICECELTALPHA = 0
+UDPMESSAGETYPE_UDPPING = 1
+UDPMESSAGETYPE_UDPVOICESPEEX = 2
+UDPMESSAGETYPE_UDPVOICECELTBETA = 3
 headerFormat=">HI"
 protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
+supportedCodec = 0x8000000b
+CODEC_NOCODEC = -1
+CODEC_ALPHA = UDPMESSAGETYPE_UDPVOICECELTALPHA
+CODEC_BETA = UDPMESSAGETYPE_UDPVOICECELTBETA
 
 class MumbleConnection:
   '''
@@ -59,6 +66,7 @@ class MumbleConnection:
     self.connectionObserver = connectionObserver
     self.disconnecting = False
     self.connectionObserver.setConnectionState(ConnectionState.Disconnected)
+    self.codec = CODEC_NOCODEC
 
   def isConnected(self):
     return self.socket != None and self.isConnected
@@ -171,8 +179,16 @@ class MumbleConnection:
       log.debug("Got Ping or UDPTunnel. Ignoring")
       return
     if msgType == MessageType.CodecVersion:
+      oldCanSpeak = self.canSpeak
       cv = CodecVersion()
       cv.ParseFromString(message)   
+      if cv.alpha != None and cv.alpha == supportedCodec:
+        self.codec = CODEC_ALPHA
+      elif cv.beta != None and cv.beta == supportedCodec:
+        self.codec = CODEC_BETA
+      self.canSpeak = self.canSpeak and (self.codec != CODEC_NOCODEC)
+      if self.canSpeak != oldCanSpeak:
+        self.connectionObserver.currentUserUpdated()
     elif msgType == MessageType.ServerSync:
       ss = ServerSync()
       ss.ParseFromString(message)

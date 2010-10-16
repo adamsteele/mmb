@@ -20,3 +20,6 @@ class IMumbleConnectionObserver:
 
   def messageReceived(self, message):
     pass
+
+  def currentUserUpdated():
+    pass
