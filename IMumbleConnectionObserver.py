@@ -21,5 +21,11 @@ class IMumbleConnectionObserver:
   def messageReceived(self, message):
     pass
 
-  def currentUserUpdated():
+  def currentUserUpdated(self):
+    pass
+
+  def serverSyncCompleted(self):
+    pass
+
+  def isServerSynched(self):
     pass

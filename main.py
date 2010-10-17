@@ -24,13 +24,13 @@ def main():
   PingThread.log.setLevel(logging.DEBUG)
   AUDIO_QUALITY = 60000
   compressedSize=min(AUDIO_QUALITY / (100 * 8), 127)
-  f=open("origina.wav.spx", "rb")
+  f=open("original.wav.celt2", "rb")
   observer=MumbleService.MumbleService('localhost', 64738, 'TestBot', None)
   observer.connect()
   data = f.read()  
   f.close()
   outputQueue = deque()
-  i = 0
+  i = 290
   while len(data) > i:
     outputQueue.append(data[i:i+compressedSize])
     i += compressedSize+1
@@ -41,23 +41,30 @@ def main():
   pds = PacketDataStream(outputBuffer)
   offset=0
   while True:
-    while len(outputQueue) > 0:
-      flags = 0
-      flags = flags | observer.getCodec() << 5
-      outputBuffer[0] = flags
-      pds.rewind()
-      pds.next()
-      seq += framesPerPacket
-      pds.writeLong(seq)
-      for i in range(framesPerPacket):
-        tmp = outputQueue.popleft()
-        head = len(tmp)
-        if i < framesPerPacket - 1:
-          head = head | 0x80
-        pds.append(head)
-        pds.append(tmp)
+    if observer.isServerSynched():
+      logging.debug("observer is synched.")
+      while len(outputQueue) > 0:
+        flags = 0
+        flags = flags | observer.getCodec() << 5
+        outputBuffer[0] = flags
+        pds.rewind()
+        pds.next()
+        seq += framesPerPacket
+        pds.writeLong(seq)
+        for i in range(framesPerPacket):
+          if len(outputQueue) == 0:
+            break
+          tmp = outputQueue.popleft()
+          head = len(tmp)
+          if i < framesPerPacket - 1:
+            head = head | 0x80
+          pds.append(head)
+          pds.append(tmp)
       # convert outputBuffer to str here its currently a list
-      observer.sendUdpMessage(outputBuffer)
+      s = ""
+      for item in outputBuffer:
+        s = s + str(item)
+      observer.sendUdpMessage(s)
     time.sleep(10)
 #  sent = 0
 #  while len(data) > 0:

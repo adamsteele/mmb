@@ -33,7 +33,8 @@ UDPMESSAGETYPE_UDPVOICESPEEX = 2
 UDPMESSAGETYPE_UDPVOICECELTBETA = 3
 headerFormat=">HI"
 protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
-supportedCodec = 0x8000000b
+#supportedCodec = 0x8000000b
+supportedCodec = -2147483637
 CODEC_NOCODEC = -1
 CODEC_ALPHA = UDPMESSAGETYPE_UDPVOICECELTALPHA
 CODEC_BETA = UDPMESSAGETYPE_UDPVOICECELTBETA
@@ -182,6 +183,8 @@ class MumbleConnection:
       oldCanSpeak = self.canSpeak
       cv = CodecVersion()
       cv.ParseFromString(message)   
+      log.debug("alpha = " + str(cv.alpha))
+      log.debug("beta = " + str(cv.beta))
       if cv.alpha != None and cv.alpha == supportedCodec:
         self.codec = CODEC_ALPHA
       elif cv.beta != None and cv.beta == supportedCodec:
@@ -200,6 +203,8 @@ class MumbleConnection:
       self.pingThread.start()
       us = UserState()
       us.session=self.session
+      self.connectionObserver.setConnectionState(ConnectionState.Connected)
+      self.connectionObserver.serverSyncCompleted()
     elif msgType == MessageType.ChannelState:
       cs = ChannelState()
       cs.ParseFromString(message)
