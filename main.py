@@ -4,12 +4,15 @@ import logging
 import logging.handlers
 import MumbleService
 import PingThread
+import wave
 from PacketDataStream import *
 from collections import deque
+from celt import *
 
 
 LOG_FILENAME = "main.log"
 
+log = logging.getLogger("main")
 
 def main():
   # Add the log message handler to the logger
@@ -22,56 +25,67 @@ def main():
   MumbleService.log.setLevel(logging.DEBUG)
   PingThread.log.addHandler(handler)
   PingThread.log.setLevel(logging.DEBUG)
+  log.addHandler(handler)
+  log.setLevel(logging.DEBUG)
   AUDIO_QUALITY = 60000
   compressedSize=min(AUDIO_QUALITY / (100 * 8), 127)
-  f=open("original.wav.celt2", "rb")
+  sample_rate=48000
+  frame_size = sample_rate / 100
+  ce = CeltEncoder(sample_rate, frame_size, 1)
+  ce.setPredictionRequest(0)
+  ce.setVBRRate(AUDIO_QUALITY)
+  f=wave.open("original.wav", "rb")
+  (nc,sw,fr,nf,comptype, compname) = f.getparams()
+  log.debug("Channels: " + str(nc))
+  log.debug("Frame Rate: " + str(fr))
+  log.debug("Frames: " + str(nf))
+  log.debug("Compression Type: " + str(comptype))
+  log.debug("Compression Name: " + str(compname))
   observer=MumbleService.MumbleService('localhost', 64738, 'TestBot', None)
   observer.connect()
-  data = f.read()  
-  f.close()
   outputQueue = deque()
-  i = 290
-  while len(data) > i:
-    outputQueue.append(data[i:i+compressedSize])
-    i += compressedSize+1
+#  i = 0
+#  while len(data) > i:
+#    outputQueue.append(data[i:i+compressedSize])
+#    i += compressedSize+1
+  eos = False
   
   seq = 0
   framesPerPacket = 6
-  outputBuffer = 1024 * [0]
-  pds = PacketDataStream(outputBuffer)
   offset=0
   while True:
     if observer.isServerSynched():
-      logging.debug("observer is synched.")
-      while len(outputQueue) > 0:
-        flags = 0
-        flags = flags | observer.getCodec() << 5
-        outputBuffer[0] = flags
-        pds.rewind()
-        pds.next()
-        seq += framesPerPacket
-        pds.writeLong(seq)
-        for i in range(framesPerPacket):
-          if len(outputQueue) == 0:
-            break
-          tmp = outputQueue.popleft()
-          head = len(tmp)
-          if i < framesPerPacket - 1:
-            head = head | 0x80
-          pds.append(head)
-          pds.append(tmp)
-      # convert outputBuffer to str here its currently a list
-      s = ""
-      for item in outputBuffer:
-        s = s + str(item)
-      observer.sendUdpMessage(s)
+      while not eos:
+        buf = f.readframes(frame_size)
+        if len(buf) == 0:
+          eos = True
+	  f.close()
+          continue
+        compressed = ce.encode(buf, compressedSize)
+        outputQueue.append(compressed)
+        if len(outputQueue) < framesPerPacket:
+          continue
+        outputBuffer = "\x00" * 1024
+        pds = PacketDataStream(outputBuffer)
+        while len(outputQueue) > 0:
+          flags = 0
+          flags = flags | observer.getCodec() << 5
+          pds.appendDataBlock(chr(flags))
+          pds.rewind()
+          pds.next()
+          seq += framesPerPacket
+          pds.putInt(seq)
+          for i in range(framesPerPacket):
+            if len(outputQueue) == 0:
+              break
+            tmp = outputQueue.popleft()
+            head = len(tmp)
+            if i < framesPerPacket - 1:
+              head = head | 0x80
+            pds.putInt(head)
+            pds.appendDataBlock(tmp)
+          observer.sendUdpMessage(outputBuffer)
     time.sleep(10)
-#  sent = 0
-#  while len(data) > 0:
-#    sndData = data[:1024]
-#    mc.sendUdpTunnelMessage(sndData)
-#    sent+=1024
-#    data=data[sent:]
 
 
 if __name__ == '__main__':

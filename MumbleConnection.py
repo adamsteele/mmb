@@ -31,7 +31,8 @@ UDPMESSAGETYPE_UDPVOICECELTALPHA = 0
 UDPMESSAGETYPE_UDPPING = 1
 UDPMESSAGETYPE_UDPVOICESPEEX = 2
 UDPMESSAGETYPE_UDPVOICECELTBETA = 3
-headerFormat=">HI"
+#headerFormat=">HI"
+headerFormat = b"!hi"
 protocolVersion = (1 << 16) | (2 << 8) | (3 & 0xFF)
 #supportedCodec = 0x8000000b
 supportedCodec = -2147483637
@@ -84,8 +85,10 @@ class MumbleConnection:
       log.error("Could not join channel")
 
   def sendMessage(self, messageType, message):
-    log.debug("Sending Message. Type: " + MessageType.StringLookupTable[messageType])
     packet=struct.pack(headerFormat,messageType,message.ByteSize())+message.SerializeToString()
+    self.__sendRawPacket(packet)
+
+  def __sendRawPacket(self, packet):
     self.sockLock.acquire()
     while len(packet)>0:
       sent=self.socket.send(packet)
@@ -98,9 +101,8 @@ class MumbleConnection:
 
   def sendUdpTunnelMessage(self, data):
     msgType = MessageType.UDPTunnel
-    message = UDPTunnel()
-    message.packet = data
-    self.sendMessage(msgType, message)
+    packet=struct.pack(headerFormat,msgType,len(data))+data
+    self.__sendRawPacket(packet)
 
   def findChannel(self, channel_id):
     for c in self.channelList:

@@ -18,6 +18,7 @@ class MumbleService(IMumbleConnectionObserver):
     return self.state
 
   def serverSyncCompleted(self):
+    log.debug("Server synched")
     self.serverSyncComplete = True
 
   def setConnectionState(self, state):
