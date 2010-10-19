@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import MumbleConnection
 import time
 import logging
@@ -14,8 +16,10 @@ LOG_FILENAME = "main.log"
 
 log = logging.getLogger("main")
 
-HOST = "jubjubnest.net"
-PORT = 12345
+#HOST = "jubjubnest.net"
+#PORT = 12345
+HOST = "localhost"
+PORT = 64738
 
 def main():
   # Add the log message handler to the logger
@@ -47,10 +51,6 @@ def main():
   observer=MumbleService.MumbleService(HOST,PORT, 'TestBot', None)
   observer.connect()
   outputQueue = deque()
-#  i = 0
-#  while len(data) > i:
-#    outputQueue.append(data[i:i+compressedSize])
-#    i += compressedSize+1
   eos = False
   
   seq = 0
@@ -71,11 +71,6 @@ def main():
         outputBuffer = "\x00" * 1024
         pds = PacketDataStream(outputBuffer)
         while len(outputQueue) > 0:
-          flags = 0
-          flags = flags | observer.getCodec() << 5
-          pds.appendDataBlock(chr(flags))
-          pds.rewind()
-          pds.next()
           seq += framesPerPacket
           pds.putInt(seq)
           for i in range(framesPerPacket):
@@ -85,9 +80,16 @@ def main():
             head = len(tmp)
             if i < framesPerPacket - 1:
               head = head | 0x80
-            pds.appendDataBlock(chr(head))
+            pds.append(head)
             pds.appendDataBlock(tmp)
-          observer.sendUdpMessage(outputBuffer)
+
+          size = pds.size()
+          pds.rewind()
+          data = []
+          data.append(chr(0 | observer.getCodec() << 5))
+          data.extend(pds.getDataBlock(size))
+          observer.sendUdpMessage("".join(data))
+          time.sleep(0.01 * framesPerPacket)
     time.sleep(10)
 
 
