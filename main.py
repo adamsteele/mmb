@@ -14,6 +14,9 @@ LOG_FILENAME = "main.log"
 
 log = logging.getLogger("main")
 
+HOST = "jubjubnest.net"
+PORT = 12345
+
 def main():
   # Add the log message handler to the logger
   handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=10*1024*1024, backupCount=5)
@@ -41,7 +44,7 @@ def main():
   log.debug("Frames: " + str(nf))
   log.debug("Compression Type: " + str(comptype))
   log.debug("Compression Name: " + str(compname))
-  observer=MumbleService.MumbleService('localhost', 64738, 'TestBot', None)
+  observer=MumbleService.MumbleService(HOST,PORT, 'TestBot', None)
   observer.connect()
   outputQueue = deque()
 #  i = 0
@@ -82,7 +85,7 @@ def main():
             head = len(tmp)
             if i < framesPerPacket - 1:
               head = head | 0x80
-            pds.putInt(head)
+            pds.appendDataBlock(chr(head))
             pds.appendDataBlock(tmp)
           observer.sendUdpMessage(outputBuffer)
     time.sleep(10)
