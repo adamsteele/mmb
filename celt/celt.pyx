@@ -73,6 +73,6 @@ cdef class CeltEncoder:
     #compressed = create_string_buffer(compressedSize)
     cdef unsigned char out[512]
     cdef unsigned char* buffer = <unsigned char *>data
-    ccelt.celt_encode(self._celtencoder, <short *>buffer, NULL, out, <int>compressedSize) 
+    cdef int len = ccelt.celt_encode(self._celtencoder, <short *>buffer, NULL, out, <int>compressedSize) 
     outBytes = <unsigned char *>out
-    return outBytes
+    return outBytes[:len]

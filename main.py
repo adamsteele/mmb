@@ -20,6 +20,7 @@ log = logging.getLogger("main")
 #PORT = 12345
 HOST = "localhost"
 PORT = 64738
+AUDIO_FILE = "male.wav"#"original.wav"
 
 def main():
   # Add the log message handler to the logger
@@ -41,13 +42,13 @@ def main():
   ce = CeltEncoder(sample_rate, frame_size, 1)
   ce.setPredictionRequest(0)
   ce.setVBRRate(AUDIO_QUALITY)
-  f=wave.open("original.wav", "rb")
+  f=wave.open(AUDIO_FILE, "rb")
   (nc,sw,fr,nf,comptype, compname) = f.getparams()
-  log.debug("Channels: " + str(nc))
-  log.debug("Frame Rate: " + str(fr))
-  log.debug("Frames: " + str(nf))
-  log.debug("Compression Type: " + str(comptype))
-  log.debug("Compression Name: " + str(compname))
+ # log.debug("Channels: " + str(nc))
+ # log.debug("Frame Rate: " + str(fr))
+ # log.debug("Frames: " + str(nf))
+ # log.debug("Compression Type: " + str(comptype))
+ # log.debug("Compression Name: " + str(compname))
   observer=MumbleService.MumbleService(HOST,PORT, 'TestBot', None)
   observer.connect()
   outputQueue = deque()
