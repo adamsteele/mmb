@@ -36,3 +36,9 @@ class MumbleService(IMumbleConnectionObserver):
 
   def isServerSynched(self):
     return self.serverSyncComplete
+
+  def joinChannel(self, channel_name):
+    for c in self.mc.channelList:
+      if c['name'] == channel_name:
+        self.mc.joinChannel(c['channel_id'])
+        break
