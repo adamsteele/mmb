@@ -10,6 +10,8 @@ import wave
 from PacketDataStream import *
 from collections import deque
 from celt import *
+from pymedia import *
+from MumbleDecoder import MumbleDecoder
 
 
 LOG_FILENAME = "main.log"
@@ -18,9 +20,9 @@ log = logging.getLogger("main")
 
 #HOST = "jubjubnest.net"
 #PORT = 12345
-HOST = "localhost"
+HOST = "england"#"localhost"
 PORT = 64738
-AUDIO_FILE = "male.wav"#"original.wav"
+AUDIO_FILE = "Soundtrack_Of_My_Life.mp3"#"original.wav"
 
 def main():
   # Add the log message handler to the logger
@@ -42,8 +44,11 @@ def main():
   ce = CeltEncoder(sample_rate, frame_size, 1)
   ce.setPredictionRequest(0)
   ce.setVBRRate(AUDIO_QUALITY)
-  f=wave.open(AUDIO_FILE, "rb")
-  (nc,sw,fr,nf,comptype, compname) = f.getparams()
+#  f = open(AUDIO_FILE, 'rb')
+#  file_data = f.read()
+#  f.close()
+#  f=wave.open(AUDIO_FILE, "rb")
+ # (nc,sw,fr,nf,comptype, compname) = f.getparams()
  # log.debug("Channels: " + str(nc))
  # log.debug("Frame Rate: " + str(fr))
  # log.debug("Frames: " + str(nf))
@@ -53,17 +58,30 @@ def main():
   observer.connect()
   outputQueue = deque()
   eos = False
-  
+ # dm = muxer.Demuxer(AUDIO_FILE.split('.')[-1].lower())
+ # frames = dm.parse(file_data)
+ # frame = frames[0]
+ # dec = audio.acodec.Decoder(dm.streams[0])
+ # r = dec.decode(frame[1])
+ # pcm_data = str(r.data)
+#  dec = MumbleDecoder(sample_rate, 1)
+#  dec.decode_and_resample(AUDIO_FILE)
+  md = MumbleDecoder(sample_rate, 1)
+  md.decode_and_resample(AUDIO_FILE)
   seq = 0
+  buffer_size = (sample_rate / 100) * 2
   framesPerPacket = 6
   offset=0
   while True:
     if observer.isServerSynched():
       while not eos:
-        buf = f.readframes(frame_size)
-        if len(buf) == 0:
+        buf = md.read_samples(1)
+        #buf = dec.get_data(frame_size)
+ #       buf = f.read(frame_size*2)
+        #offset = offset + frame_size
+        if buf == None or len(buf) == 0:
           eos = True
-	  f.close()
+#	  f.close()
           continue
         compressed = ce.encode(buf, compressedSize)
         outputQueue.append(compressed)
