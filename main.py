@@ -10,8 +10,8 @@ import wave
 from PacketDataStream import *
 from collections import deque
 from celt import *
-from pymedia import *
-from MumbleDecoder import MumbleDecoder
+#from MumbleDecoder import MumbleDecoder
+import TestDecoder
 
 
 LOG_FILENAME = "main.log"
@@ -33,6 +33,8 @@ def main():
   MumbleConnection.log.setLevel(logging.DEBUG)
   MumbleService.log.addHandler(handler)
   MumbleService.log.setLevel(logging.DEBUG)
+  TestDecoder.log.addHandler(handler)
+  TestDecoder.log.setLevel(logging.DEBUG)
   PingThread.log.addHandler(handler)
   PingThread.log.setLevel(logging.DEBUG)
   log.addHandler(handler)
@@ -58,6 +60,9 @@ def main():
   observer.connect()
   outputQueue = deque()
   eos = False
+  m = TestDecoder.Main()
+  m.run()
+  log.debug("after m.run")
  # dm = muxer.Demuxer(AUDIO_FILE.split('.')[-1].lower())
  # frames = dm.parse(file_data)
  # frame = frames[0]
@@ -66,8 +71,8 @@ def main():
  # pcm_data = str(r.data)
 #  dec = MumbleDecoder(sample_rate, 1)
 #  dec.decode_and_resample(AUDIO_FILE)
-  md = MumbleDecoder(sample_rate, 1)
-  md.decode_and_resample(AUDIO_FILE)
+#  md = MumbleDecoder(sample_rate, 1)
+#  md.decode_and_resample(AUDIO_FILE)
   seq = 0
   buffer_size = (sample_rate / 100) * 2
   framesPerPacket = 6
@@ -75,7 +80,8 @@ def main():
   while True:
     if observer.isServerSynched():
       while not eos:
-        buf = md.read_samples(1)
+ #       buf = md.read_samples(1)
+	buf = m.read_bytes(buffer_size)
         #buf = dec.get_data(frame_size)
  #       buf = f.read(frame_size*2)
         #offset = offset + frame_size
