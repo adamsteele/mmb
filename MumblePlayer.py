@@ -1,4 +1,4 @@
-import thread, threading, logging, signal, time
+import thread, threading, logging, signal, time, ConfigParser
 from collections import deque
 
 from PacketDataStream import *
@@ -6,6 +6,8 @@ from celt import *
 from MumbleDecoder import MumbleDecoder
 
 log = logging.getLogger(__name__)
+config = ConfigParser.RawConfigParser()
+config.read('mmb.cfg')
 
 class MumblePlayer:
   def __init__(self, mumble_service):
@@ -25,9 +27,12 @@ class MumblePlayer:
   def unpause(self):
     self.play_thread.play()
 
-  def __del__(self):
+  def stop(self):
     self.play_thread.stop()
     self.play_thread.join()
+
+  def __del__(self):
+    self.stop()
 
   class PlayThread(threading.Thread):
     def __init__(self, mumble_service):
@@ -35,15 +40,18 @@ class MumblePlayer:
       self.running = True
       self.current_song = None
       self.mumble_service = mumble_service
-      # create decoder with a sample rate of 48kHz and 1 channel
-      self.decoder = MumbleDecoder(48000, 1)
+      self.sample_rate = config.getint('AudioSettings', 'sample_rate')
+      self.channels = config.getint("AudioSettings", "channels")
+      self.audio_quality = config.getint("AudioSettings", "audio_quality")
+      # create decoder with configured sample rate and channels
+      self.decoder = MumbleDecoder(self.sample_rate, self.channels)
       self.is_paused = False
-      self.frames_per_packet = 6
+      self.frames_per_packet = config.getint("AudioSettings", "frames_per_packet")
       # Set up celt encoder
-      self.ce = CeltEncoder(48000, 48000/100, 1)
+      self.ce = CeltEncoder(self.sample_rate, self.sample_rate/100, self.channels)
       self.ce.setPredictionRequest(0)
-      self.ce.setVBRRate(60000)
-      self.compressed_size = min(60000 / (100 * 8), 127)
+      self.ce.setVBRRate(self.audio_quality)
+      self.compressed_size = min(self.audio_quality / (100 * 8), 127)
 
     def new_song(self, song):
       self.current_song = song

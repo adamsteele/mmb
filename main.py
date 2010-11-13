@@ -11,7 +11,7 @@ from PacketDataStream import *
 from collections import deque
 from celt import *
 #from MumbleDecoder import MumbleDecoder
-import TestDecoder
+import LibMPG123
 
 
 LOG_FILENAME = "main.log"
@@ -20,7 +20,7 @@ log = logging.getLogger("main")
 
 #HOST = "jubjubnest.net"
 #PORT = 12345
-HOST = "england"#"localhost"
+HOST = "localhost"
 PORT = 64738
 AUDIO_FILE = "Soundtrack_Of_My_Life.mp3"#"original.wav"
 
@@ -33,8 +33,8 @@ def main():
   MumbleConnection.log.setLevel(logging.DEBUG)
   MumbleService.log.addHandler(handler)
   MumbleService.log.setLevel(logging.DEBUG)
-  TestDecoder.log.addHandler(handler)
-  TestDecoder.log.setLevel(logging.DEBUG)
+  #TestDecoder.log.addHandler(handler)
+ # TestDecoder.log.setLevel(logging.DEBUG)
   PingThread.log.addHandler(handler)
   PingThread.log.setLevel(logging.DEBUG)
   log.addHandler(handler)
@@ -60,9 +60,9 @@ def main():
   observer.connect()
   outputQueue = deque()
   eos = False
-  m = TestDecoder.Main()
-  m.run()
-  log.debug("after m.run")
+#  m = TestDecoder.Main()
+#  m.run()
+ # log.debug("after m.run")
  # dm = muxer.Demuxer(AUDIO_FILE.split('.')[-1].lower())
  # frames = dm.parse(file_data)
  # frame = frames[0]
@@ -77,11 +77,14 @@ def main():
   buffer_size = (sample_rate / 100) * 2
   framesPerPacket = 6
   offset=0
+  mpg123=LibMPG123.Mpg123(sample_rate)
+  mpg123.open_file(AUDIO_FILE)
   while True:
     if observer.isServerSynched():
       while not eos:
  #       buf = md.read_samples(1)
-	buf = m.read_bytes(buffer_size)
+#	buf = m.read_bytes(buffer_size)
+        buf = mpg123.read()
         #buf = dec.get_data(frame_size)
  #       buf = f.read(frame_size*2)
         #offset = offset + frame_size
