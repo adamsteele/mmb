@@ -23,7 +23,7 @@ class Mpg123:
   def __init__(self, sample_rate):
     self.err = lib.mpg123_init()
     self.mh = lib.mpg123_new(None, self.err)
-    lib.mpg123_param(self.mh, MPG123_VERBOSE, 255, 0)
+#    lib.mpg123_param(self.mh, MPG123_VERBOSE, 255, 0)
     lib.mpg123_param(self.mh, MPG123_RVA, MPG123_RVA_MIX, 0)
     lib.mpg123_param(self.mh, MPG123_ADD_FLAGS, MPG123_MONO_MIX, 0)
     lib.mpg123_param(self.mh, MPG123_FORCE_RATE, sample_rate, 0)

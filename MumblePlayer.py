@@ -3,7 +3,7 @@ from collections import deque
 
 from PacketDataStream import *
 from celt import *
-from MumbleDecoder import MumbleDecoder
+from LibMPG123 import Mpg123
 
 log = logging.getLogger(__name__)
 config = ConfigParser.RawConfigParser()
@@ -44,7 +44,7 @@ class MumblePlayer:
       self.channels = config.getint("AudioSettings", "channels")
       self.audio_quality = config.getint("AudioSettings", "audio_quality")
       # create decoder with configured sample rate and channels
-      self.decoder = MumbleDecoder(self.sample_rate, self.channels)
+      self.decoder = Mpg123(self.sample_rate)
       self.is_paused = False
       self.frames_per_packet = config.getint("AudioSettings", "frames_per_packet")
       # Set up celt encoder
@@ -55,7 +55,7 @@ class MumblePlayer:
 
     def new_song(self, song):
       self.current_song = song
-      self.decoder.decode_and_resample(song['location'])
+      self.decoder.open_file(song['location'])
 
     def pause(self):
       self.is_paused = True
@@ -74,7 +74,7 @@ class MumblePlayer:
       while self.running:
         while self.is_paused or not self.current_song:
           time.sleep(10)
-        buf = self.decoder.read_samples(1)
+        buf = self.decoder.read()
         if buf == None or len(buf) == 0:
           time.sleep(10)
           continue
