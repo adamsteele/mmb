@@ -43,7 +43,7 @@ class MumblePlayer:
       self.sample_rate = config.getint('AudioSettings', 'sample_rate')
       self.channels = config.getint("AudioSettings", "channels")
       self.audio_quality = config.getint("AudioSettings", "audio_quality")
-      self.decoder = Mpg123(self.sample_rate)
+      self.decoder_list = {'mp3':Mpg123(self.sample_rate)}
       self.is_paused = False
       self.frames_per_packet = config.getint("AudioSettings", "frames_per_packet")
       # Set up celt encoder
@@ -51,9 +51,12 @@ class MumblePlayer:
       self.ce.setPredictionRequest(0)
       self.ce.setVBRRate(self.audio_quality)
       self.compressed_size = min(self.audio_quality / (100 * 8), 127)
+      self.decoder = None
 
     def new_song(self, song):
       self.current_song = song
+      ext = str.split(song['location'], '.')[-1].lower()
+      self.decoder = self.decoder_list[ext]
       self.decoder.open_file(song['location'])
 
     def pause(self):
