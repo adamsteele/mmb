@@ -40,7 +40,7 @@ class PingThread(threading.Thread):
         p.tcp_ping_var=50
         self.pingTotal+=1
         self.mc.sendMessage(MessageType.Ping, p)
-        time.sleep(30)
+        time.sleep(20)
       except Exception as inst:
         log.error("Got error: ")
         log.error(type(inst))

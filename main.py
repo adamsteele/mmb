@@ -21,8 +21,12 @@ log = logging.getLogger("main")
 #HOST = "jubjubnest.net"
 #PORT = 12345
 HOST = "localhost"
+#HOST = "209.116.208.35"
 PORT = 64738
+BOTNAME = "NoctumMusicBot"
 AUDIO_FILE = "Soundtrack_Of_My_Life.mp3"#"original.wav"
+CHANNEL_NAME = 'Random Music Room'
+PWORD = None#'bacon'
 
 def main():
   # Add the log message handler to the logger
@@ -56,9 +60,14 @@ def main():
  # log.debug("Frames: " + str(nf))
  # log.debug("Compression Type: " + str(comptype))
  # log.debug("Compression Name: " + str(compname))
-  observer=MumbleService.MumbleService(HOST,PORT, 'TestBot', None)
+  observer=MumbleService.MumbleService(HOST,PORT, BOTNAME, PWORD)
   observer.connect()
+  while not observer.isServerSynched():
+    time.sleep(10)
+
+  observer.joinChannel(CHANNEL_NAME)
   outputQueue = deque()
+
   eos = False
 #  m = TestDecoder.Main()
 #  m.run()
