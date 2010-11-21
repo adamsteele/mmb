@@ -4,6 +4,7 @@ from collections import deque
 from PacketDataStream import *
 from celt import *
 from LibMPG123 import Mpg123
+from events import *
 
 log = logging.getLogger(__name__)
 config = ConfigParser.RawConfigParser()
@@ -13,11 +14,15 @@ class MumblePlayer:
   def __init__(self, mumble_service):
     self.mumble_service = mumble_service
     self.play_thread = self.PlayThread(mumble_service)
-    self.play_thread.start()
+    self.play_thread_started = False
+#    self.play_thread.start()
 
   def play(self, song):
     if song == None:
       return
+    if not self.play_thread_started:
+      self.play_thread.start()
+    self.play_thread_started = True
     self.play_thread.new_song(song)
     self.play_thread.play()
     
@@ -52,6 +57,7 @@ class MumblePlayer:
       self.ce.setVBRRate(self.audio_quality)
       self.compressed_size = min(self.audio_quality / (100 * 8), 127)
       self.decoder = None
+      self.on_song_eos_event = EventHook()
 
     def new_song(self, song):
       self.current_song = song
@@ -67,18 +73,22 @@ class MumblePlayer:
 
     def stop(self):
       self.running = False
+ 
+    def fire_song_eos_event(self):
+      self.on_song_eos_event.fire(sender=self, event=Event())
   
     def run(self):
       seq = 0
       output_queue = deque()
       while not self.mumble_service.isServerSynched():
-        time.sleep(10)
+        time.sleep(1)
       while self.running:
         while self.is_paused or not self.current_song:
-          time.sleep(10)
+          time.sleep(1)
         buf = self.decoder.read()
         if buf == None or len(buf) == 0:
-          time.sleep(10)
+          self.fire_song_eos_event()
+          time.sleep(1)
           continue
         compressed = self.ce.encode(buf, self.compressed_size)
         output_queue.append(compressed)

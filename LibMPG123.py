@@ -51,5 +51,5 @@ class Mpg123:
     if self.err == MPG123_DONE:
       return None 
     done = c_int()
-    err = lib.mpg123_read(self.mh, self.buf, self.buffer_size, byref(done))
+    self.err = lib.mpg123_read(self.mh, self.buf, self.buffer_size, byref(done))
     return self.buf.raw
