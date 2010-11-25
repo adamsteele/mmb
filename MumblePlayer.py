@@ -5,6 +5,7 @@ from PacketDataStream import *
 from celt import *
 from LibMPG123 import Mpg123
 from events import *
+from Mumble_pb2 import VoiceTarget
 
 log = logging.getLogger(__name__)
 config = ConfigParser.RawConfigParser()
@@ -15,7 +16,19 @@ class MumblePlayer:
     self.mumble_service = mumble_service
     self.play_thread = self.PlayThread(mumble_service)
     self.play_thread_started = False
-#    self.play_thread.start()
+    self.mumble_service.on_whisper_event += self.__whisper_event_handler
+
+  def __whisper_event_handler(self, sender, event):
+    log.debug("whisper_event_handler")
+    log.debug(sender)
+    log.debug(event)
+    if event.message == "play":
+      log.debug("Adding " + event.user['name'] + " to whisper_targets")
+      self.play_thread.whisper_targets.append(event.user['session_id'])
+    elif event.message == "stop":
+      log.debug("Removing " + event.user['name'] + " from whisper_targets")
+      self.play_thread.whisper_targets.remove(event.user['session_id'])
+    # Anything else we dont care about and can be ignored
 
   def play(self, song):
     if song == None:
@@ -58,8 +71,12 @@ class MumblePlayer:
       self.compressed_size = min(self.audio_quality / (100 * 8), 127)
       self.decoder = None
       self.on_song_eos_event = EventHook()
+      self.whisper_targets = []
+      self.whisper_target_id = 0
+      self.whisper_target_builder = WhisperTargetBuilder()
 
     def new_song(self, song):
+      log.debug("Got new song: " + song['location'])
       self.current_song = song
       ext = str.split(song['location'], '.')[-1].lower()
       self.decoder = self.decoder_list[ext]
@@ -76,6 +93,18 @@ class MumblePlayer:
  
     def fire_song_eos_event(self):
       self.on_song_eos_event.fire(sender=self, event=Event())
+
+    def __get_whisper_target_id(self):
+      return self.whisper_target_id
+
+    def __get_flags(self):
+      # flags contain the codec being used
+      # and the whisper target id
+      # Send a voice target message with the voice targets and an Id
+      # Use that Id in the flags to refer to the voice targets
+      flags = self.mumble_service.getCodec() << 5
+      flags |= self.__get_whisper_target_id()
+      return flags
   
     def run(self):
       seq = 0
@@ -83,8 +112,13 @@ class MumblePlayer:
       while not self.mumble_service.isServerSynched():
         time.sleep(1)
       while self.running:
-        while self.is_paused or not self.current_song:
+        while self.is_paused or not self.current_song or len(self.whisper_targets) == 0:
           time.sleep(1)
+        whisper_message = self.whisper_target_builder.build_whisper_target_for(self.whisper_targets)
+        if whisper_message.id != self.whisper_target_id:
+          log.debug("Sending new whisper target")
+          self.whisper_target_id = whisper_message.id
+          self.mumble_service.sendVoiceTargetMessage(whisper_message)
         buf = self.decoder.read()
         if buf == None or len(buf) == 0:
           self.fire_song_eos_event()
@@ -111,7 +145,45 @@ class MumblePlayer:
           size = pds.size()
           pds.rewind()
           data = []
-          data.append(chr(0 | self.mumble_service.getCodec() << 5))
+          flags = self.__get_flags()
+          data.append(chr(flags))
+          # now the rest of the PDS
           data.extend(pds.getDataBlock(size))
           self.mumble_service.sendUdpMessage("".join(data))
           time.sleep(0.01 * self.frames_per_packet)
+
+class WhisperTargetBuilder:
+  def __init__(self):
+    self.whisper_target_cache = []
+    self.whisper_target_id = 1
+
+  def __get_new_id(self):
+    return self.whisper_target_id + 1
+
+  def build_whisper_target_for(self, whisper_targets):
+    vt = VoiceTarget()
+    if self.__has_changes(whisper_targets): 
+      log.debug("has_changes = True")
+      # get a new id because we have changes
+      self.whisper_target_id = self.__get_new_id()
+      self.whisper_target_cache = whisper_targets
+    vt.id = self.whisper_target_id
+    t = vt.targets.add()
+    for wt in whisper_targets:
+      t.session.append(wt)
+    return vt
+
+  def __has_changes(self, whisper_targets):
+    whisper_cache_len = len(self.whisper_target_cache)
+    whisper_target_len = len(whisper_targets)
+    if whisper_cache_len != whisper_target_len:
+      return True
+    else:
+      if whisper_cache_len < whisper_target_len:
+        return len(self.__difference(self.whisper_target_cache, whisper_targets)) > 0
+      else:
+        return len(self.__difference(whisper_targets, self.whisper_target_cache)) > 0
+    return False
+
+  def __difference(self, a, b):
+    return list(set(b).difference(set(a))) 

@@ -12,6 +12,7 @@ from MessageTypes import MessageType
 from PingThread import PingThread
 from CryptState import CryptState
 from IMumbleConnectionObserver import ConnectionState
+from events import *
 
 
 log = logging.getLogger("MumbleConnection")
@@ -69,6 +70,8 @@ class MumbleConnection:
     self.disconnecting = False
     self.connectionObserver.setConnectionState(ConnectionState.Disconnected)
     self.codec = CODEC_NOCODEC
+    self.on_play_text_message_event = EventHook()
+    self.on_stop_text_message_event = EventHook()
 
   def isConnected(self):
     return self.socket != None and self.isConnected
@@ -238,19 +241,23 @@ class MumbleConnection:
     elif msgType == MessageType.UserRemove:
       pass
     elif msgType == MessageType.TextMessage:
-      pass
+      tm = TextMessage()
+      tm.ParseFromString(message)
+      self.__handleTextMessage(tm)
     elif msgType == MessageType.Version:
       pass
     elif msgType == MessageType.ServerConfig:
       sc = ServerConfig()
       sc.ParseFromString(message)
-      msgLength = sc.message_length
-      if msgLength > 0:
-        welcome_msg = self.__readFully(msgLength)
-        log.debug(welcome_msg)
-      imageMsgLength = sc.image_message_length
-      if imageMsgLength > 0:
-        welcome_image = self.__readFully(imageMsgLength)
+      log.debug(sc.message_length)
+      #msgLength = sc.message_length
+      #if msgLength > 0:
+      #  welcome_msg = self.__readFully(msgLength)
+      #  log.debug(welcome_msg)
+      #imageMsgLength = sc.image_message_length
+      #if imageMsgLength > 0:
+      #  welcome_image = self.__readFully(imageMsgLength)
+      
     elif msgType == MessageType.CryptSetup:
       cs = CryptSetup()
       cs.ParseFromString(message)
@@ -296,3 +303,19 @@ class MumbleConnection:
     us.session = self.session
     us.comment = comment
     self.sendMessage(MessageType.UserState, us)
+
+  def __handleTextMessage(self, tm):
+    if tm.actor != None:
+      u = self.__findUser(tm.actor)
+      log.debug("Got text message for " + u['name']) 
+      log.debug(tm.message)
+      if tm.message == "play":
+        e = PlayTextMessageEvent()
+        e.user = u
+        self.on_play_text_message_event.fire(sender=self, event=e)
+      elif tm.message == "stop":
+        e = StopTextMessageEvent()
+        e.user = u
+        self.on_stop_text_message_event.fire(sender=self, event=e)
+      else:
+        log.debug("Ignoring text message: " + tm.message)

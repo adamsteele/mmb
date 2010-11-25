@@ -37,3 +37,16 @@ class EventHook(object):
     for theHandler in self.__handlers:
       if theHandler.im_self == inObject:
         self -= theHandler
+
+class WhisperEvent(Event):
+  def __init__(self):
+    self.user = None
+    self.message = ""
+
+class PlayTextMessageEvent(Event):
+  def __init__(self):
+    self.user = None
+
+class StopTextMessageEvent(Event):
+  def __init__(self):
+    self.user = None
