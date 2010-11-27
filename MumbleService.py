@@ -48,6 +48,9 @@ class MumbleService(IMumbleConnectionObserver):
   def currentUserUpdated(self):
     pass
 
+  def setComment(self, comment):
+    self.mc.setComment(comment)
+
   def getState(self):
     return self.state
 
