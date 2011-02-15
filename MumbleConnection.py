@@ -179,10 +179,7 @@ class MumbleConnection:
        The message is a ProtoBuf message that was received.
     '''
 
-    log.debug("Processing Message...")
-    log.debug(MessageType.StringLookupTable[msgType])
     if msgType == MessageType.UDPTunnel or msgType == MessageType.Ping:
-      log.debug("Got Ping or UDPTunnel. Ignoring")
       return
     if msgType == MessageType.CodecVersion:
       oldCanSpeak = self.canSpeak

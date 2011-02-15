@@ -12,12 +12,17 @@ class PlayThread(threading.Thread):
     threading.Thread.__init__(self)
     self.frame_queue = deque()
     self.mumble_service = mumble_service
+    self.is_running = False
  
   def queue_frame(self, frame):
     self.frame_queue.append(frame)
 
+  def stop(self):
+    self.is_running = False
+
   def run(self):
-    while True:
+    self.is_running = True
+    while self.is_running:
       seq = 0
       if len(self.frame_queue) < FRAMES_PER_PACKET:
         continue
