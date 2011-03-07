@@ -18,15 +18,12 @@ LOG_FILENAME = "main.log"
 
 log = logging.getLogger("main")
 
-#HOST = "jubjubnest.net"
-#PORT = 12345
 HOST = "localhost"
-#HOST = "209.116.208.35"
 PORT = 64738
-BOTNAME = "NoctumMusicBot"
+BOTNAME = "MusicBot"
 AUDIO_FILE = "Soundtrack_Of_My_Life.mp3"#"original.wav"
 CHANNEL_NAME = 'Random Music Room'
-PWORD = None#'bacon'
+PWORD = None
 
 def main():
   # Add the log message handler to the logger
