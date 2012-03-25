@@ -6,6 +6,7 @@ import sys
 import MumbleService
 import MumblePlayer
 import MumbleConnection
+import MpdMumblePlayer
 
 LOG_FILENAME = "sample_player.log"
 
@@ -30,13 +31,16 @@ class Main:
     MumblePlayer.log.setLevel(logging.DEBUG)
     MumbleConnection.log.addHandler(handler)
     MumbleConnection.log.setLevel(logging.DEBUG)
+    MpdMumblePlayer.log.addHandler(handler)
+    MpdMumblePlayer.log.setLevel(logging.DEBUG)
     log.addHandler(handler)
     log.setLevel(logging.DEBUG)
-    self.simple_playlist = []
-    self.init_playlist(playlist_file)
+#    self.simple_playlist = []
+#    self.init_playlist(playlist_file)
     self.ms = MumbleService.MumbleService(HOST, PORT, BOT_NAME, PWORD)
-    self.p = MumblePlayer.MumblePlayer(self.ms)
-    self.p.play_thread.on_song_eos_event += self.on_song_eos_event_handler
+    self.player = MpdMumblePlayer.MpdMumblePlayer(self.ms, playlist_file)
+   # self.p = MumblePlayer.MumblePlayer(self.ms)
+  #  self.p.play_thread.on_song_eos_event += self.on_song_eos_event_handler
     self.ms.connect()
     while not self.ms.isServerSynched():
       time.sleep(10)
@@ -54,13 +58,18 @@ class Main:
     f.close()
 
   def main_loop(self):
-    self.p.play(self.simple_playlist.pop())
-    while True:
-      try:
-        time.sleep(10)
-      except (KeyboardInterrupt, SystemExit):
-        self.p.stop()
-        raise
+    self.player.run()
+    #while True:
+    #  f = open(self.playlist_file, 'rb')
+   #   pcmData = f.readline(1)
+   #   print
+    #self.p.play(self.simple_playlist.pop())
+    #while True:
+    #  try:
+    #    time.sleep(10)
+    #  except (KeyboardInterrupt, SystemExit):
+    #    self.p.stop()
+    #    raise
 
   def on_song_eos_event_handler(self, sender, event):
     if len(self.simple_playlist) > 0:
