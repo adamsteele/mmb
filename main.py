@@ -15,6 +15,8 @@ import os
 import sys
 import getopt
 
+helpdiag = "_"
+
 LOG_FILENAME = "main.log"
 
 log = logging.getLogger("main")
@@ -23,7 +25,7 @@ def main(argv):
   try:
     opts, args = getopt.getopt(argv,"hs:u:p:f:",["server=","username=","password=","port=","file="])
   except getopt.GetoptError:
-     print 'argv error :('
+     print helpdiag
      sys.exit(2)
 
   AUDIO_FILE = ""
@@ -55,12 +57,12 @@ def main(argv):
     elif opt in ("--port"):
       PORT = arg
       fPORT = True
-   
-  if fSERVER == False:
-    print "Using default server IP: 0.0.0.0"
+
   if fUSER == False:
     print "Must have a username, quitting. See -h (--help)."
-    sys.exit
+    sys.exit(2)
+  if fSERVER == False:
+    print "Using default server IP: 0.0.0.0"
   if fPORT == False:
     print "Using default port: 64738"
 
@@ -151,6 +153,17 @@ def main(argv):
 #    time.sleep(10)
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+   helpdiag = """
+This program expects a PCM 48000hz FIFO stream as the file or passed to stdin. Do something else and you're gonna have a bad time.
 
-helpdiag = "Sorry, none here yet."
+Arguments:
+  -u --username (Required) should be obvious
+  -p --password defaults to ""
+  -s --server defaults to "0.0.0.0"
+  -f --file if blank this reads at stdin
+  --port defaults to 64738
+
+Sample command:
+mpg123 -r 48000 -s "http://relay.radioreference.com:80/688179909/" | python ./main.py -s 127.0.0.1 -u username -p password
+   """
+   main(sys.argv[1:])
