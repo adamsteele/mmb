@@ -7,7 +7,6 @@ This is a fork from the older original to make it more useful to my purposes.
 * Switch input to a FIFO buffer (feed from mpg123)
 * Add arguments/commandline-ability
 
-
 ##Building
 Looks like to get this going you must do two things:
 ###celt
@@ -38,4 +37,7 @@ That will play the Boston Police radio feed from RadioReference.
 * We _do_ need `-s` to get the stdout output.
 
 ##TODO
-I want to get threshold detection going on the audio stream so we're not constantly broadcasting (useful in the case of voice streams).
+~~I want to get threshold detection going on the audio stream so we're not constantly broadcasting (useful in the case of voice streams).~~ DONE.
+
+##NOTES
+The threshold feature is hard coded to ">1000" which seems to work well enough. Tweak as you wish.

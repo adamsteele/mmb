@@ -14,6 +14,7 @@ from MumbleDecoder import MumbleDecoder
 import os
 import sys
 import getopt
+import audioop #for threshold detection
 
 helpdiag = "_"
 
@@ -33,11 +34,13 @@ def main(argv):
   PASSWORD = ""
   USERNAME = ""
   PORT = 64738
+  THRESHVAL = 1000
 
   fSERVER = False
   fPORT = False
   fUSER = False
   fAUDIO_FILE = False
+  DOTHRESH = False
 
   for opt, arg in opts:
     if opt == ('-h', "--help"):
@@ -57,6 +60,8 @@ def main(argv):
     elif opt in ("--port"):
       PORT = arg
       fPORT = True
+    elif opt in ("--threshold"):
+      DOTHRESH = True
 
   if fUSER == False:
     print "Must have a username, quitting. See -h (--help)."
@@ -124,6 +129,10 @@ def main(argv):
           eos = True
 	  f.close()
           continue
+        if (DOTHRESH):
+          rms = audioop.rms(buf, 2)
+          if (rms < THRESHVAL):
+	    continue
         compressed = ce.encode(buf, compressedSize)
         outputQueue.append(compressed)
         if len(outputQueue) < framesPerPacket:
@@ -150,7 +159,7 @@ def main(argv):
           data.extend(pds.getDataBlock(size))
           observer.sendUdpMessage("".join(data))
           time.sleep(0.01 * framesPerPacket)
-#    time.sleep(10)
+#    time.sleep(.01)
 
 if __name__ == "__main__":
    helpdiag = """
@@ -162,6 +171,7 @@ Arguments:
   -s --server defaults to "0.0.0.0"
   -f --file if blank this reads at stdin
   --port defaults to 64738
+  --threshold enables the detection of peaks in the audio. Useful for not hogging bandwidth on silence.
 
 Sample command:
 mpg123 -r 48000 -s "http://relay.radioreference.com:80/688179909/" | python ./main.py -s 127.0.0.1 -u username -p password
