@@ -1,4 +1,4 @@
-from pymedia import *
+#from pymedia import *
 
 class MumbleDecoder:
   def __init__(self, sample_rate, channels):
