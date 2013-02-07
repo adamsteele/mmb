@@ -24,7 +24,7 @@ log = logging.getLogger("main")
 
 def main(argv):
   try:
-    opts, args = getopt.getopt(argv,"hs:u:p:f:",["server=","username=","password=","port=","file="])
+    opts, args = getopt.getopt(argv,"hs:u:p:f:",["server=","username=","password=","port=","file=","threshold"])
   except getopt.GetoptError:
      print helpdiag
      sys.exit(2)
