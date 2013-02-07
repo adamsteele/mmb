@@ -10,20 +10,60 @@ import wave
 from PacketDataStream import *
 from collections import deque
 from celt import *
-#from pymedia import *
 from MumbleDecoder import MumbleDecoder
 import os
+import sys
+import getopt
 
 LOG_FILENAME = "main.log"
 
 log = logging.getLogger("main")
 
-HOST = "serverip"
-PASS = "password"
-PORT = 64738
-AUDIO_FILE = "tempfile"
+def main(argv):
+  try:
+    opts, args = getopt.getopt(argv,"hs:u:p:f:",["server=","username=","password=","port=","file="])
+  except getopt.GetoptError:
+     print 'argv error :('
+     sys.exit(2)
 
-def main():
+  AUDIO_FILE = ""
+  SERVERIP = "0.0.0.0"
+  PASSWORD = ""
+  USERNAME = ""
+  PORT = 64738
+
+  fSERVER = False
+  fPORT = False
+  fUSER = False
+  fAUDIO_FILE = False
+
+  for opt, arg in opts:
+    if opt == ('-h', "--help"):
+      print helpdiag
+      sys.exit()
+    elif opt in ("-s", "--server"):
+      SERVERIP = arg
+      fSERVER = True
+    elif opt in ("-u", "--username"):
+      USERNAME = arg
+      fUSER = True
+    elif opt in ("-p", "--password"):
+      PASSWORD = arg
+    elif opt in ("-f", "--file"):
+      AUDIO_FILE = arg
+      fAUDIO_FILE = True
+    elif opt in ("--port"):
+      PORT = arg
+      fPORT = True
+   
+  if fSERVER == False:
+    print "Using default server IP: 0.0.0.0"
+  if fUSER == False:
+    print "Must have a username, quitting. See -h (--help)."
+    sys.exit
+  if fPORT == False:
+    print "Using default port: 64738"
+
   # Add the log message handler to the logger
   handler = logging.handlers.RotatingFileHandler(LOG_FILENAME, maxBytes=10*1024*1024, backupCount=5)
   formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -44,18 +84,8 @@ def main():
   ce = CeltEncoder(sample_rate, frame_size, 1)
   ce.setPredictionRequest(0)
   ce.setVBRRate(AUDIO_QUALITY)
-#  f = open(AUDIO_FILE, 'rb')
-#  file_data = f.read()
-#  f.close()
-#  f=wave.open(AUDIO_FILE, "rb")
- # (nc,sw,fr,nf,comptype, compname) = f.getparams()
- # log.debug("Channels: " + str(nc))
- # log.debug("Frame Rate: " + str(fr))
- # log.debug("Frames: " + str(nf))
- # log.debug("Compression Type: " + str(comptype))
- # log.debug("Compression Name: " + str(compname))
 
-  observer=MumbleService.MumbleService(HOST,PORT, 'TestBot', PASS)
+  observer=MumbleService.MumbleService(SERVERIP,PORT, USERNAME, PASSWORD)
   observer.connect()
   outputQueue = deque()
   eos = False
@@ -70,8 +100,8 @@ def main():
 
 #  md = MumbleDecoder(sample_rate, 1)
 #  md.decode_and_resample(AUDIO_FILE)
-
-  f = open(AUDIO_FILE, 'r')
+  if fAUDIO_FILE == True:
+    f = open(AUDIO_FILE, 'r')
 
   seq = 0
   buffer_size = (sample_rate / 100) * 2
@@ -80,7 +110,10 @@ def main():
   while True:
     if observer.isServerSynched():
       while not eos:
-        buf = f.read(frame_size*2) #480*2=960
+        if fAUDIO_FILE == True:
+          buf = f.read(frame_size*2)
+        else:
+          buf = sys.stdin.read(frame_size*2) #480*2=960
 #        buf = md.read_samples(1) #good but not needed
         #buf = dec.get_data(frame_size)
  #       buf = f.read(frame_size*2)
@@ -117,6 +150,7 @@ def main():
           time.sleep(0.01 * framesPerPacket)
 #    time.sleep(10)
 
+if __name__ == "__main__":
+   main(sys.argv[1:])
 
-if __name__ == '__main__':
-  main()
+helpdiag = "Sorry, none here yet."
