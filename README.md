@@ -24,6 +24,9 @@ There are other dependencies required but I don't remember all of them. One is p
 `git clone git://git.xiph.org/celt.git` or `git clone http://git.xiph.org/celt.git`
 Others will show up in stack traces as errors (protobuf) and you'll just need to add those. I'll do a proper writeup sometime soon.
 
+* cython
+* libprotobuf-dev and python-protobuf
+* libcelt
 
 ##Running
 `python ./main.py`
