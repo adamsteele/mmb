@@ -31,13 +31,14 @@ Others will show up in stack traces as errors (protobuf) and you'll just need to
 ##Running
 `python ./main.py`
 There's help in there so read that, it'll be kept more up to date. For a sample line:
-`mpg123 -r 48000 -s "./somefile.mp3" | python ./main.py -s 127.0.0.1 -u username -p password`
+`mpg123 -r 48000 -s -m "./somefile.mp3" | python ./main.py -s 127.0.0.1 -u username -p password`
 ###Piping and mpg123
 mpg123 has just the right features to get us the PCM audio stream we need. It can also handle http streams:
-`mpg123 -r 48000 -s "http://relay.radioreference.com:80/138151917"`
+`mpg123 -r 48000 -s -m "http://relay.radioreference.com:80/138151917"`
 That will play the Boston Police radio feed from RadioReference.
 * We _do_ need `-r 48000` because the celt encoder in our python script demands it (I've tried changing it, doesn't work).
 * We _do_ need `-s` to get the stdout output.
+* We _might_ not need `-m`. That mixes us down to mono instead of stereo. Try without, if the audio is "slow" use it.
 
 ##TODO
 ~~I want to get threshold detection going on the audio stream so we're not constantly broadcasting (useful in the case of voice streams).~~ DONE.
